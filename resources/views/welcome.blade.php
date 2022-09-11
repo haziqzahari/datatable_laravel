@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Laravel</title>
+    <title>DataTable - Server Side Example</title>
 
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
@@ -421,44 +421,60 @@
         class="relative flex items-top justify-center min-h-screen bg-gray-100 dark:bg-gray-900 sm:items-center py-4 sm:pt-0">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-5">
-                <h5 class="fw-bold mb-4">Donation List</h5>
+                <h5 class="fw-bold mb-4">Customer List</h5>
                 <table id="table" class="display">
                     <thead>
                         <tr>
-                            <th>Column 1</th>
-                            <th>Column 2</th>
-                            <th>Column 3</th>
-                            <th>Column 4</th>
-                            <th>Column 3</th>
-                            <th>Column 4</th>
+                            <th>No.</th>
+                            <th>Cust. Name</th>
+                            <th>Cust. Phone</th>
+                            <th>Cust. Email</th>
+                            <th>Status</th>
+                            <th>Registered On</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>Row 1 Data 1</td>
-                            <td>Row 1 Data 2</td>
-                            <td>Row 1 Data 1</td>
-                            <td>Row 1 Data 2</td>
-                            <td>Row 1 Data 1</td>
-                            <td>Row 1 Data 2</td>
-                        </tr>
-                        <tr>
-                            <td>Row 2 Data 1</td>
-                            <td>Row 2 Data 2</td>
-                            <td>Row 2 Data 1</td>
-                            <td>Row 2 Data 2</td>
-                            <td>Row 2 Data 1</td>
-                            <td>Row 2 Data 2</td>
-                        </tr>
+
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
     <script>
-        let table = new DataTable('#table', {
-            // options
-        });
+        let table = $("#table").DataTable({
+        'ajax': {
+            url: "{{ url('/') . '/api/datatable/getCustomerList' }}",
+            type: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            "data": function(d) {
+
+            },
+            error: function(error) {
+                console.log(error);
+            }
+        },
+        paging: true,
+        responsive: true,
+        "bServerSide": true,
+        "processing": true,
+        "serverMethod": 'post',
+        "language": {
+            "lengthMenu": "Show _MENU_ entries",
+            "zeroRecords": "No records found...",
+            "info": "",
+            "infoEmpty": "Record were empty!",
+            "infoFiltered": "",
+            "paginate": {
+                "previous": "Previous",
+                "next": "Next"
+            },
+            "search": "Search : "
+        },
+    });
+
+    $.fn.dataTable.ext.errMode = 'throw';
     </script>
 </body>
 
