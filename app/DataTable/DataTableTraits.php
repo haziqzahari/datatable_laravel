@@ -222,22 +222,48 @@ trait DataTableTraits
         return [];
     }
 
+    /**
+     * Set the orders for query builder in orderBy().
+     *
+     * Format : [
+     * 'column' => '',
+     * 'direction' => '',
+     *
+     * @return array
+     */
     public function queryOrder($order = []): array
     {
         return $order;
     }
 
+    /**
+     * Set the mapping for data returned.
+     *
+     * @return array
+     */
     public function mapDataTable(): array
     {
         return [];
     }
 
-
+    /**
+     * Get the columns of the table specified.
+     * (Only for MySQL)
+     *
+     *
+     * @return array
+     */
     private function getTableColumns(): array
     {
         return DB::select('SHOW COLUMNS FROM '.$this->queryTable());
     }
 
+    /**
+     * Map joins for query builder.
+     *
+     *
+     * @return void
+     */
     private function mapJoins($join)
     {
         switch ($join['type']) {
@@ -286,6 +312,12 @@ trait DataTableTraits
         }
     }
 
+    /**
+     * Map conditions for query builder.
+     *
+     *
+     * @return void
+     */
     private function mapConditions($condition)
     {
         switch ($condition['type']) {
@@ -352,6 +384,12 @@ trait DataTableTraits
         }
     }
 
+    /**
+     * Map search values for query builder.
+     *
+     *
+     * @return void
+     */
     private function mapSearchValue($q, $columns)
     {
         foreach ($columns as $key => $value) {
@@ -366,6 +404,12 @@ trait DataTableTraits
         return $q;
     }
 
+     /**
+     * Map orders for query builder.
+     *
+     *
+     * @return void
+     */
     private function mapOrders()
     {
 
@@ -376,7 +420,13 @@ trait DataTableTraits
             $this->order['direction']);
     }
 
-    private function mapRows($data)
+    /**
+     * Map data to be returned.
+     *
+     *
+     * @return array
+     */
+    private function mapRows($data) : array
     {
         if (empty($this->mapDataTable())) {
             return $data;
@@ -398,6 +448,12 @@ trait DataTableTraits
         }, $data, array_keys($data));
     }
 
+    /**
+     * Run the query builder.
+     *
+     *
+     * @return array
+     */
     private function renderDataTable(): array
     {
         $data = $this->queryDataTable()->get()->toArray();
@@ -405,6 +461,13 @@ trait DataTableTraits
         return $this->mapRows($data);
     }
 
+
+    /**
+     * Get row counts of the specified table.
+     *
+     *
+     * @return void
+     */
     private function getDataCount(): int
     {
 
