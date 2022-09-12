@@ -140,10 +140,10 @@ trait DataTableTraits
 
         if (!empty($this->search)) {
             $this->query->where(function ($q) {
-                return $this->mapSearchValue($q, count($this->queryColumns()) > 1 ? $this->getTableColumns() : $this->queryColumns());
+                return $this->mapSearchValue($q, $this->queryColumns()[0] == '*' ? $this->getTableColumns() : $this->queryColumns());
             });
             $this->query_count->where(function ($q) {
-                return $this->mapSearchValue($q, count($this->queryColumns()) > 1 ? $this->getTableColumns() : $this->queryColumns());
+                return $this->mapSearchValue($q, $this->queryColumns()[0] == '*' ? $this->getTableColumns() : $this->queryColumns());
             });
         }
 
@@ -393,12 +393,12 @@ trait DataTableTraits
     private function mapSearchValue($q, $columns)
     {
         foreach ($columns as $key => $value) {
-            if ($key == 1) {
-                $q->where($value, 'like', '%' . $this->search . '%');
+            if ($key == 0) {
+                $q->where(is_object($value) ? (array)$value["Field"]: $value, 'like', '%' . $this->search . '%');
                 continue;
             }
 
-            $q->orWhere($value, 'like', '%' . $this->search . '%');
+            $q->orWhere(is_object($value) ? (array)$value["Field"]: $value, 'like', '%' . $this->search . '%');
         }
 
         return $q;
