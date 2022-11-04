@@ -11,6 +11,11 @@ interface DataTableInterface {
     public function queryJoins();
     public function queryConditions();
 
+    //Used for map status columns
+    public function statusColumns();
+    public function dateColumns();
+    public function idColumn();
+
     // Used for mapping row data
     public function mapDataTable();
 

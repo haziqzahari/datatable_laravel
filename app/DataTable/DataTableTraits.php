@@ -192,10 +192,10 @@ trait DataTableTraits
      * Set the joins used for query builder in join().
      *
      * Format : [
-     * 'table' => '',
-     * 'first_key' => '',
-     * 'operator' => '',
-     * 'second_key' => ''
+     *   'table' => '',
+     *   'first_key' => '',
+     *   'operator' => '',
+     *   'second_key' => ''
      * ]
      *
      * @return array
@@ -209,10 +209,10 @@ trait DataTableTraits
      * Set the conditions used for query builder in join().
      *
      * Format : [
-     * 'column' => '',
-     * 'operator' => '',
-     * 'value' => '',
-     * 'type' => ''
+     *   'column' => '',
+     *   'operator' => '',
+     *   'value' => '',
+     *   'type' => ''
      * ]
      *
      * @return array
@@ -226,9 +226,9 @@ trait DataTableTraits
      * Set the orders for query builder in orderBy().
      *
      * Format : [
-     * 'column' => '',
-     * 'direction' => '',
-     *
+     *   'column' => '',
+     *   'direction' => '',
+     * ]
      * @return array
      */
     public function queryOrder($order = []): array
@@ -247,6 +247,41 @@ trait DataTableTraits
     }
 
     /**
+     * Set the mapping for status columns.
+     * Uses Bootstrap badges.
+     * @return array
+     */
+    public function statusColumns(): array
+    {
+        return [];
+    }
+
+    /**
+     * Set the mapping for status columns.
+     * Uses Bootstrap badges.
+     * @return array
+     */
+    public function idColumn(): string
+    {
+        return '';
+    }
+
+    /**
+     * Set the mapping for date columns for formatting.
+     * Uses date()  function to forrmat.
+     * [
+     *     'column_name'=> 'date_format'
+     * ]
+     * @return array
+     */
+    public function dateColumns(): array
+    {
+        return [];
+    }
+
+
+
+    /**
      * Get the columns of the table specified.
      * (Only for MySQL)
      *
@@ -255,7 +290,7 @@ trait DataTableTraits
      */
     private function getTableColumns(): array
     {
-        return DB::select('SHOW COLUMNS FROM '.$this->queryTable());
+        return DB::select('SHOW COLUMNS FROM ' . $this->queryTable());
     }
 
     /**
@@ -394,17 +429,17 @@ trait DataTableTraits
     {
         foreach ($columns as $key => $value) {
             if ($key == 0) {
-                $q->where(is_object($value) ? (array)$value["Field"]: $value, 'like', '%' . $this->search . '%');
+                $q->where(is_object($value) ? (array)$value["Field"] : $value, 'like', '%' . $this->search . '%');
                 continue;
             }
 
-            $q->orWhere(is_object($value) ? (array)$value["Field"]: $value, 'like', '%' . $this->search . '%');
+            $q->orWhere(is_object($value) ? (array)$value["Field"] : $value, 'like', '%' . $this->search . '%');
         }
 
         return $q;
     }
 
-     /**
+    /**
      * Map orders for query builder.
      *
      *
@@ -415,9 +450,10 @@ trait DataTableTraits
 
         $this->query->orderBy(
             (int)$this->order['column'] == 0 ?
-            ((array)($this->getTableColumns()[0]))["Field"] :
-            $this->queryColumns()[(int)$this->order['column']-1],
-            $this->order['direction']);
+                ((array)($this->getTableColumns()[0]))["Field"] :
+                $this->queryColumns()[(int)$this->order['column'] - 1],
+            $this->order['direction']
+        );
     }
 
     /**
@@ -426,7 +462,7 @@ trait DataTableTraits
      *
      * @return array
      */
-    private function mapRows($data) : array
+    private function mapRows($data): array
     {
         if (empty($this->mapDataTable())) {
             return $data;
@@ -437,15 +473,126 @@ trait DataTableTraits
         return array_map(function ($column, $index) use ($mapped) {
             $column = (array)$column;
 
+            $id = '';
+
+
             foreach ($this->mapDataTable() as $key => $value) {
+
+                if($this->idColumn() != '')
+                {
+                    $id = $column[$this->idColumn()];
+                }
+
                 if ($key == 0) {
                     $mapped[] = $index + 1 + $this->offset;
                 }
-                $mapped[] = $column[$value];
+
+                if(str_contains(strtolower($value), 'status') && in_array($value, $this->statusColumns()))
+                {
+                    $mapped[] = $this->mapStatusColumns($column[$value]);
+                    if($key+1 != count($this->mapDataTable())){
+                        continue;
+                    }
+                }
+
+                if(array_key_exists($value, $this->dateColumns()))
+                {
+                    $mapped[] =  $this->mapDateColumns($column[$value], $this->dateColumns()[$value]);
+                    if($key+1 != count($this->mapDataTable())){
+                        continue;
+                    }
+                }
+
+
+
+
+                if($key+1 == count($this->mapDataTable()))
+                {
+                    $mapped[] =  $this->mapActionButton($id);
+                }
+                else{
+                    $mapped[] = $column[$value];
+                }
+
             }
 
             return $mapped;
         }, $data, array_keys($data));
+    }
+
+
+    /**
+     * Renders Status Badges
+     * Using Bootstrap 5 Badges
+     *
+     */
+    private function mapStatusColumns($status): string
+    {
+
+        $green_status = array(
+            'enabled',
+            'active',
+            'ok',
+            'aktif',
+            'lulus',
+            'pass'
+        );
+
+        $red_status =  array(
+            'disabled',
+            'inactive',
+            'ok',
+            'tidak aktif',
+            'gagal',
+            'fail'
+        );
+
+        switch (true) {
+            case (in_array(strtolower($status), $green_status)):
+                $status = "<span class='badge bg-success'>{$status}</span>";
+                break;
+            case (in_array(strtolower($status), $red_status)):
+                $status = "<span class='badge bg-danger'>{$status}</span>";
+                break;
+            default:
+                # code...
+                break;
+        }
+        return $status;
+    }
+
+    /**
+     * Renders Status Badges
+     * Using Bootstrap 5 Badges
+     *
+     */
+    private function mapDateColumns($date, $format): string
+    {
+        return date($format, strtotime($date));
+    }
+
+    /**
+     * Renders Status Badges
+     * Using Bootstrap 5 Badges
+     *
+     */
+    private function mapActionButton($id): string
+    {
+        $action = '';
+
+        if ($this->action['view']['enabled'] == true) {
+            $action .= '<a class="me-3" href="'.route($this->action['view']['route'], [explode('.',$this->action['view']['route'])[0] => $id]).'"><i class="fa-solid fa-eye"></i></a>';
+        }
+
+        if ($this->action['edit']['enabled'] == true) {
+            $action .= '<a class="me-3" href="'.route($this->action['edit']['route'], [explode('.',$this->action['edit']['route'])[0] => $id]).'"><i class="fa-solid fa-pen-to-square"></i></a>';
+        }
+
+        if ($this->action['delete']['enabled'] == true) {
+            $action .= '<a class="me-3" href="'.route($this->action['delete']['route'], [explode('.',$this->action['delete']['route'])[0] => $id]).'"><i class="fa-solid fa-trash-can"></i></a>';
+        }
+
+        return $action;
     }
 
     /**

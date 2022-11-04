@@ -105,6 +105,13 @@ class DataTableController extends Controller
         ]);
         $customer->setDraw($params['draw']);
 
+        $customer->setActionButton(true, true, true);
+        $customer->setActionRoute(
+            'datatable.show',
+            'datatable.edit',
+            'datatable.destroy'
+        );
+
         echo json_encode($customer->getDataTable());
     }
 }

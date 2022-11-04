@@ -17,9 +17,15 @@ class DataTableCustomer implements DataTableInterface
         return 'customers';
     }
 
+    public function idColumn(): string
+    {
+        return 'customer_id';
+    }
+
     public function queryColumns(): array
     {
         return [
+            'customers.customer_id',
             'customers.customer_name',
             'customers.customer_phone',
             'customers.customer_email',
@@ -56,6 +62,20 @@ class DataTableCustomer implements DataTableInterface
     public function queryOrder($order = []): array
     {
         return $order;
+    }
+
+    public function statusColumns() : array
+    {
+        return [
+            'status_description'
+        ];
+    }
+
+    public function dateColumns() : array
+    {
+        return [
+            'created_at' => 'd M-Y h:i A'
+        ];
     }
 
     public function mapDataTable()

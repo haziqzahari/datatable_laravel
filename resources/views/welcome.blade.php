@@ -13,6 +13,7 @@
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.12.1/css/jquery.dataTables.css">
 
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
 
     <!-- Styles -->
@@ -431,6 +432,7 @@
                             <th>Cust. Email</th>
                             <th>Status</th>
                             <th>Registered On</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -457,6 +459,7 @@
         },
         paging: true,
         responsive: true,
+        html:true,
         "bServerSide": true,
         "processing": true,
         "serverMethod": 'post',
