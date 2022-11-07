@@ -15,6 +15,8 @@ interface DataTableInterface {
     public function statusColumns();
     public function dateColumns();
     public function idColumn();
+    public function enableIndexing();
+    public function enableLogging();
 
     // Used for mapping row data
     public function mapDataTable();

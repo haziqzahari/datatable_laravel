@@ -64,14 +64,17 @@ class DataTableCustomer implements DataTableInterface
         return $order;
     }
 
-    public function statusColumns() : array
+    public function statusColumns(): array
     {
         return [
-            'status_description'
+            'status_description' => array(
+                'success'  => 'active',
+                'warning' => 'inactive'
+            )
         ];
     }
 
-    public function dateColumns() : array
+    public function dateColumns(): array
     {
         return [
             'created_at' => 'd M-Y h:i A'
@@ -86,6 +89,20 @@ class DataTableCustomer implements DataTableInterface
             'customer_email',
             'status_description',
             'created_at'
+        ];
+    }
+
+    public function logContent(): array
+    {
+        return [
+            array(
+               'text'=>"<small>Created by:</small><br>%s<br><small class=\'text-sm\'>%s</small><br><small class=\'text-sm\'>%s</small>",
+               'map' => array(
+                    'customer_name',
+                    'customer_email',
+                    'created_at'
+               )
+            )
         ];
     }
 }

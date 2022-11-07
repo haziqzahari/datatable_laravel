@@ -165,6 +165,26 @@ trait DataTableTraits
      *
      * @return string
      */
+    public function enableIndexing(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Set the DB table used for query builder.
+     *
+     * @return string
+     */
+    public function enableLogging(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Set the DB table used for query builder.
+     *
+     * @return string
+     */
     public function queryTable(): string
     {
         return '';
@@ -279,6 +299,19 @@ trait DataTableTraits
         return [];
     }
 
+     /**
+     * Set the mapping for date columns for formatting.
+     * Uses date()  function to forrmat.
+     * [
+     *     'column_name'=> 'date_format'
+     * ]
+     * @return array
+     */
+    public function logContent(): string
+    {
+        return '';
+    }
+
 
 
     /**
@@ -328,6 +361,14 @@ trait DataTableTraits
                     $join['first_key'],
                     $join['operator'],
                     $join['second_key']
+                );
+                break;
+            case 'joinSub':
+                $this->query->joinSub(
+                    $join['subquery']
+                );
+                $this->query_count->joinSub(
+                    $join['subquery']
                 );
                 break;
             default:
@@ -478,42 +519,33 @@ trait DataTableTraits
 
             foreach ($this->mapDataTable() as $key => $value) {
 
-                if($this->idColumn() != '')
-                {
+                if ($this->idColumn() != '') {
                     $id = $column[$this->idColumn()];
                 }
 
-                if ($key == 0) {
+                if ($key == 0 && $this->enableIndexing()) {
                     $mapped[] = $index + 1 + $this->offset;
                 }
 
-                if(str_contains(strtolower($value), 'status') && in_array($value, $this->statusColumns()))
-                {
-                    $mapped[] = $this->mapStatusColumns($column[$value]);
-                    if($key+1 != count($this->mapDataTable())){
+                if (str_contains(strtolower($value), 'status') && array_key_exists($value, $this->statusColumns())) {
+                    $mapped[] = $this->mapStatusColumns($this->statusColumns()[$value], $column[$value]);
+                    if ($key + 1 != count($this->mapDataTable())) {
                         continue;
                     }
                 }
 
-                if(array_key_exists($value, $this->dateColumns()))
-                {
+                if (array_key_exists($value, $this->dateColumns())) {
                     $mapped[] =  $this->mapDateColumns($column[$value], $this->dateColumns()[$value]);
-                    if($key+1 != count($this->mapDataTable())){
+                    if ($key + 1 != count($this->mapDataTable())) {
                         continue;
                     }
                 }
 
-
-
-
-                if($key+1 == count($this->mapDataTable()))
-                {
-                    $mapped[] =  $this->mapActionButton($id);
-                }
-                else{
+                if ($key + 1 == count($this->mapDataTable())) {
+                    $mapped[] =  $this->mapActionButton($id, $column);
+                } else {
                     $mapped[] = $column[$value];
                 }
-
             }
 
             return $mapped;
@@ -526,33 +558,17 @@ trait DataTableTraits
      * Using Bootstrap 5 Badges
      *
      */
-    private function mapStatusColumns($status): string
+    private function mapStatusColumns($status_column, $status): string
     {
-
-        $green_status = array(
-            'enabled',
-            'active',
-            'ok',
-            'aktif',
-            'lulus',
-            'pass'
-        );
-
-        $red_status =  array(
-            'disabled',
-            'inactive',
-            'ok',
-            'tidak aktif',
-            'gagal',
-            'fail'
-        );
-
         switch (true) {
-            case (in_array(strtolower($status), $green_status)):
+            case (array_key_exists('success', $status_column) &&  $status_column['success'] == strtolower($status)):
                 $status = "<span class='badge bg-success'>{$status}</span>";
                 break;
-            case (in_array(strtolower($status), $red_status)):
-                $status = "<span class='badge bg-danger'>{$status}</span>";
+            case (array_key_exists('warning', $status_column) &&  $status_column['warning'] == strtolower($status)):
+                $status = "<span class='badge bg-warning'>{$status_column['warning']}</span>";
+                break;
+            case (array_key_exists('danger', $status_column) &&  $status_column['danger'] == strtolower($status)):
+                $status = "<span class='badge bg-danger'>{$status_column['danger']}</span>";
                 break;
             default:
                 # code...
@@ -576,23 +592,47 @@ trait DataTableTraits
      * Using Bootstrap 5 Badges
      *
      */
-    private function mapActionButton($id): string
+    private function mapActionButton($id, $data): string
     {
         $action = '';
 
-        if ($this->action['view']['enabled'] == true) {
-            $action .= '<a class="me-3" href="'.route($this->action['view']['route'], [explode('.',$this->action['view']['route'])[0] => $id]).'"><i class="fa-solid fa-eye"></i></a>';
+        switch (true) {
+            case ($this->action['view']['enabled']):
+                $action .= '<a class="me-3" href="' . route($this->action['view']['route'], [explode('.', $this->action['view']['route'])[0] => $id]) . '"><i class="fa-solid fa-eye"></i></a>';
+                break;
+            case ($this->action['edit']['enabled']):
+                $action .= '<a class="me-3" href="' . route($this->action['edit']['route'], [explode('.', $this->action['edit']['route'])[0] => $id]) . '"><i class="fa-solid fa-pen-to-square"></i></a>';
+                break;
+            default:
+                $action .= '<a class="me-3" href="' . route($this->action['delete']['route'], [explode('.', $this->action['delete']['route'])[0] => $id]) . '"><i class="fa-solid fa-trash-can"></i></a>';
+                break;
         }
 
-        if ($this->action['edit']['enabled'] == true) {
-            $action .= '<a class="me-3" href="'.route($this->action['edit']['route'], [explode('.',$this->action['edit']['route'])[0] => $id]).'"><i class="fa-solid fa-pen-to-square"></i></a>';
-        }
-
-        if ($this->action['delete']['enabled'] == true) {
-            $action .= '<a class="me-3" href="'.route($this->action['delete']['route'], [explode('.',$this->action['delete']['route'])[0] => $id]).'"><i class="fa-solid fa-trash-can"></i></a>';
+        if ($this->enableLogging()) {
+            $action .=  sprintf(
+                '<span data-bs-toggle="tooltip" data-trigger="hover"  data-bs-placement="left" data-bs-html="true" title="%s" data-original-title="Info"><i class="fa-solid fa-circle-info"></i></span>',
+                $this->mapContent($data)
+            );
         }
 
         return $action;
+    }
+
+    private function mapContent($data)
+    {
+        if($this->logContent() == ''){
+            return 'No logs for this information.';
+        }
+
+        $text = '';
+
+        foreach ($this->logContent() as $key => $content) {
+            $text .=  vsprintf($content['text'], array_map((function($index) use($data){
+                return $data[$index];
+           }), $content['map']));;
+        }
+
+        return $text;
     }
 
     /**
