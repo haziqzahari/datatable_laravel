@@ -10,6 +10,7 @@ interface DataTableInterface {
     public function queryColumns();
     public function queryJoins();
     public function queryConditions();
+    public function queryCount();
 
     //Used for map status columns
     public function statusColumns();

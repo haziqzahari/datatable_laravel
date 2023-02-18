@@ -19,11 +19,12 @@ trait DataTableTraits
     private $direction;
     private $draw;
     private $order;
+    private $params;
 
-    private $action = array(
-        'view' => array('enabled' => 0, 'route' => ''),
-        'edit' => array('enabled' => 0, 'route' => ''),
-        'delete' => array('enabled' => 0, 'route' => ''),
+    protected $action = array(
+        'view' => array('enabled' => 0, 'route' => []),
+        'edit' => array('enabled' => 0, 'route' => []),
+        'delete' => array('enabled' => 0, 'route' => []),
     );
 
     public function __construct()
@@ -47,6 +48,16 @@ trait DataTableTraits
         );
 
         return $response;
+    }
+
+    /**
+     * Return SQL Query of Query Builder
+     *
+     * @return array
+     */
+    public function getDataTableSQL(): string
+    {
+        return $response = $this->queryDataTable()->toSql();
     }
 
 
@@ -92,6 +103,18 @@ trait DataTableTraits
     }
 
     /**
+     * Set the order for DataTable sorting
+     *
+     * @return void
+     */
+    public function setParams($params)
+    {
+        $this->params = $params;
+    }
+
+
+
+    /**
      * Set each action button to be enabled or disabled.
      * This feature is not yet available in this release version.
      *
@@ -110,7 +133,7 @@ trait DataTableTraits
      *
      * @return void
      */
-    public function setActionRoute($view_route = '', $edit_route = '', $delete_route = '')
+    public function setActionRoute($view_route = [], $edit_route = [], $delete_route = [])
     {
         $this->action['view']['route'] = $view_route;
         $this->action['edit']['route'] = $edit_route;
@@ -125,10 +148,10 @@ trait DataTableTraits
     public function queryDataTable()
     {
         $this->query = DB::table($this->queryTable())
-            ->select($this->queryColumns());
+            ->select($this->mapQueryColumns());
 
         $this->query_count = DB::table($this->queryTable())
-            ->selectRaw('COUNT(' . $this->queryTable() . '.' . ((array)($this->getTableColumns()[0]))["Field"] . ') as count');
+            ->selectRaw('COUNT(' . $this->queryTable() . '.' . ((array)($this->getTableColumns()[0]))["Field"] . ') OVER () as count');
 
         if (!empty($this->queryJoins())) {
             array_map(array($this, 'mapJoins'), $this->queryJoins());
@@ -140,11 +163,22 @@ trait DataTableTraits
 
         if (!empty($this->search)) {
             $this->query->where(function ($q) {
-                return $this->mapSearchValue($q, $this->queryColumns()[0] == '*' ? $this->getTableColumns() : $this->queryColumns());
+                return $this->mapSearchValue($q, empty($this->searchColumns()) ? $this->getTableColumns() : $this->searchColumns());
             });
             $this->query_count->where(function ($q) {
-                return $this->mapSearchValue($q, $this->queryColumns()[0] == '*' ? $this->getTableColumns() : $this->queryColumns());
+                return $this->mapSearchValue($q, empty($this->searchColumns()) ? $this->getTableColumns() : $this->searchColumns());
             });
+        }
+
+        if (!empty($this->queryGroup())) {
+            $this->query->groupBy($this->queryGroup());
+
+            $this->query_count->groupBy($this->queryGroup());
+        }
+
+        if(!empty($this->queryOrder()))
+        {
+            $this->mapQueryOrders();
         }
 
         if (!empty($this->order)) {
@@ -251,9 +285,31 @@ trait DataTableTraits
      * ]
      * @return array
      */
-    public function queryOrder($order = []): array
+    public function queryOrder(): array
     {
-        return $order;
+        return [];
+    }
+
+    /**
+     * Set the group by for query builder in groupBy().
+     *
+     * Format : [$group, ...]
+     *
+     * @return array
+     */
+    public function queryGroup(): array
+    {
+        return [];
+    }
+
+    /**
+     * Set the mapping for data returned.
+     *
+     * @return array
+     */
+    public function searchColumns(): array
+    {
+        return [];
     }
 
     /**
@@ -269,6 +325,14 @@ trait DataTableTraits
     /**
      * Set the mapping for status columns.
      * Uses Bootstrap badges.
+     *
+     * Format  : array(
+     *      'column' => array(
+     *          'warning' => [value => '', text => ''],
+     *          'danger' => [value => '', text => ''],
+     *          'success' => [value => '', text => '']
+     *      )
+     * )
      * @return array
      */
     public function statusColumns(): array
@@ -299,7 +363,7 @@ trait DataTableTraits
         return [];
     }
 
-     /**
+    /**
      * Set the mapping for date columns for formatting.
      * Uses date()  function to forrmat.
      * [
@@ -327,6 +391,20 @@ trait DataTableTraits
     }
 
     /**
+     * Map the columns of the table specified.
+     * (Only for MySQL)
+     *
+     *
+     * @return array
+     */
+    private function mapQueryColumns(): array
+    {
+        return array_map(function ($column, $key) {
+            return $column;
+        }, $this->queryColumns(), array_keys($this->queryColumns()));
+    }
+
+    /**
      * Map joins for query builder.
      *
      *
@@ -338,29 +416,61 @@ trait DataTableTraits
             case 'right':
                 $this->query->rightJoin(
                     $join['table'],
-                    $join['first_key'],
-                    $join['operator'],
-                    $join['second_key']
+                    function ($j) use ($join) {
+                        $j->on(
+                            $join['first_key'],
+                            $join['operator'],
+                            $join['second_key']
+                        );
+
+                        if (array_key_exists('condition', $join)) {
+                            $j->whereRaw($join['condition']);
+                        }
+                    }
                 );
                 $this->query_count->rightJoin(
                     $join['table'],
-                    $join['first_key'],
-                    $join['operator'],
-                    $join['second_key']
+                    function ($j) use ($join) {
+                        $j->on(
+                            $join['first_key'],
+                            $join['operator'],
+                            $join['second_key']
+                        );
+
+                        if (array_key_exists('condition', $join)) {
+                            $j->whereRaw($join['condition']);
+                        }
+                    }
                 );
                 break;
             case 'left':
                 $this->query->leftJoin(
                     $join['table'],
-                    $join['first_key'],
-                    $join['operator'],
-                    $join['second_key']
+                    function ($j) use ($join) {
+                        $j->on(
+                            $join['first_key'],
+                            $join['operator'],
+                            $join['second_key']
+                        );
+
+                        if (array_key_exists('condition', $join)) {
+                            $j->whereRaw($join['condition']);
+                        }
+                    }
                 );
                 $this->query_count->leftJoin(
                     $join['table'],
-                    $join['first_key'],
-                    $join['operator'],
-                    $join['second_key']
+                    function ($j) use ($join) {
+                        $j->on(
+                            $join['first_key'],
+                            $join['operator'],
+                            $join['second_key']
+                        );
+
+                        if (array_key_exists('condition', $join)) {
+                            $j->whereRaw($join['condition']);
+                        }
+                    }
                 );
                 break;
             case 'joinSub':
@@ -374,15 +484,31 @@ trait DataTableTraits
             default:
                 $this->query->join(
                     $join['table'],
-                    $join['first_key'],
-                    $join['operator'],
-                    $join['second_key']
+                    function ($j) use ($join) {
+                        $j->on(
+                            $join['first_key'],
+                            $join['operator'],
+                            $join['second_key']
+                        );
+
+                        if (array_key_exists('condition', $join)) {
+                            $j->whereRaw($join['condition']);
+                        }
+                    }
                 );
                 $this->query_count->join(
                     $join['table'],
-                    $join['first_key'],
-                    $join['operator'],
-                    $join['second_key']
+                    function ($j) use ($join) {
+                        $j->on(
+                            $join['first_key'],
+                            $join['operator'],
+                            $join['second_key']
+                        );
+
+                        if (array_key_exists('condition', $join)) {
+                            $j->whereRaw($join['condition']);
+                        }
+                    }
                 );
                 break;
         }
@@ -469,12 +595,14 @@ trait DataTableTraits
     private function mapSearchValue($q, $columns)
     {
         foreach ($columns as $key => $value) {
+
+
             if ($key == 0) {
-                $q->where(is_object($value) ? (array)$value["Field"] : $value, 'like', '%' . $this->search . '%');
+                $q->where($columns instanceof DB ? ((array)$value)["Field"] : (is_string($key) ? $key : $value), 'like', '%' . $this->search . '%');
                 continue;
             }
 
-            $q->orWhere(is_object($value) ? (array)$value["Field"] : $value, 'like', '%' . $this->search . '%');
+            $q->orWhere($columns instanceof DB ? ((array)$value)["Field"] : (is_string($key) ? $key : $value), 'like', '%' . $this->search . '%');
         }
 
         return $q;
@@ -488,13 +616,25 @@ trait DataTableTraits
      */
     private function mapOrders()
     {
-
         $this->query->orderBy(
             (int)$this->order['column'] == 0 ?
                 ((array)($this->getTableColumns()[0]))["Field"] :
                 $this->queryColumns()[(int)$this->order['column'] - 1],
             $this->order['direction']
         );
+    }
+
+    /**
+     * Map orders for query builder.
+     *
+     *
+     * @return void
+     */
+    private function mapQueryOrders()
+    {
+        array_map(function($order){
+            $this->query->orderBy($order['column'],$order['direction']);
+        }, $this->queryOrder());
     }
 
     /**
@@ -529,22 +669,28 @@ trait DataTableTraits
 
                 if (str_contains(strtolower($value), 'status') && array_key_exists($value, $this->statusColumns())) {
                     $mapped[] = $this->mapStatusColumns($this->statusColumns()[$value], $column[$value]);
-                    if ($key + 1 != count($this->mapDataTable())) {
-                        continue;
+
+                    if (($key + 1) == count($this->mapDataTable())) {
+                        $mapped[] =  $this->mapActionButton($id, $column);
                     }
+
+                    continue;
                 }
 
                 if (array_key_exists($value, $this->dateColumns())) {
                     $mapped[] =  $this->mapDateColumns($column[$value], $this->dateColumns()[$value]);
-                    if ($key + 1 != count($this->mapDataTable())) {
-                        continue;
+
+                    if (($key + 1) == count($this->mapDataTable())) {
+                        $mapped[] =  $this->mapActionButton($id, $column);
                     }
+
+                    continue;
                 }
 
-                if ($key + 1 == count($this->mapDataTable())) {
+                $mapped[] = $column[$value];
+
+                if (($key + 1) == count($this->mapDataTable())) {
                     $mapped[] =  $this->mapActionButton($id, $column);
-                } else {
-                    $mapped[] = $column[$value];
                 }
             }
 
@@ -561,14 +707,14 @@ trait DataTableTraits
     private function mapStatusColumns($status_column, $status): string
     {
         switch (true) {
-            case (array_key_exists('success', $status_column) &&  $status_column['success'] == strtolower($status)):
-                $status = "<span class='badge bg-success'>{$status}</span>";
+            case (array_key_exists('success', $status_column) &&  $status_column['success']['value'] == strtolower($status)):
+                $status = "<span class='badge bg-success text-light'>{$status_column['success']['text']}</span>";
                 break;
-            case (array_key_exists('warning', $status_column) &&  $status_column['warning'] == strtolower($status)):
-                $status = "<span class='badge bg-warning'>{$status_column['warning']}</span>";
+            case (array_key_exists('warning', $status_column) &&  $status_column['warning']['value'] == strtolower($status)):
+                $status = "<span class='badge bg-warning text-light'>{$status_column['warning']['text']}</span>";
                 break;
-            case (array_key_exists('danger', $status_column) &&  $status_column['danger'] == strtolower($status)):
-                $status = "<span class='badge bg-danger'>{$status_column['danger']}</span>";
+            case (array_key_exists('danger', $status_column) &&  $status_column['danger']['value'] == strtolower($status)):
+                $status = "<span class='badge bg-danger text-light'>{$status_column['danger']['text']}</span>";
                 break;
             default:
                 # code...
@@ -592,25 +738,61 @@ trait DataTableTraits
      * Using Bootstrap 5 Badges
      *
      */
-    private function mapActionButton($id, $data): string
+    protected function mapActionButton($id, $data): string
     {
         $action = '';
 
-        switch (true) {
-            case ($this->action['view']['enabled']):
-                $action .= '<a class="me-3" href="' . route($this->action['view']['route'], [explode('.', $this->action['view']['route'])[0] => $id]) . '"><i class="fa-solid fa-eye"></i></a>';
-                break;
-            case ($this->action['edit']['enabled']):
-                $action .= '<a class="me-3" href="' . route($this->action['edit']['route'], [explode('.', $this->action['edit']['route'])[0] => $id]) . '"><i class="fa-solid fa-pen-to-square"></i></a>';
-                break;
-            default:
-                $action .= '<a class="me-3" href="' . route($this->action['delete']['route'], [explode('.', $this->action['delete']['route'])[0] => $id]) . '"><i class="fa-solid fa-trash-can"></i></a>';
-                break;
+
+        if ($this->action['view']['enabled'] == true) {
+
+            $view = [];
+
+
+            foreach (explode("|", $this->action['view']['route'][key($this->action['view']['route'])]) as  $value) {
+                $view[$value] = $data[$value];
+            }
+
+            if (strpos(key($this->action['view']['route']), '#') === 0) {
+                $action .= '<a class="' . substr(key($this->action['view']['route']), 1) . ' mr-4 text-dark" href="#" data-toggle="tooltip" data-trigger="hover"  data-target="' . substr(key($this->action['view']['route']), 1) . '" data-placement="top"  data-id="' . $data[$this->action['view']['route']] . '"  data-html="true" title="View Details"><i class="fa-solid fa-eye"></i></a>';
+            } else {
+
+
+                $action .= '<a class="mr-4 text-dark" href="' . route(key($this->action['view']['route']), $view) . '" data-toggle="tooltip" data-trigger="hover"  data-placement="top" data-html="true" title="View Details"><i class="fa-solid fa-eye"></i></a>';
+            }
         }
+
+        if ($this->action['edit']['enabled'] == true) {
+
+            $edit = [];
+
+            foreach (explode("|", $this->action['edit']['route'][key($this->action['edit']['route'])]) as  $value) {
+                $edit[$value] = $data[$value];
+            }
+
+            if (strpos(key($this->action['edit']['route']), '#') === 0) {
+                $action .= '<a class="' . substr(key($this->action['edit']['route']), 1) . ' mr-4 text-dark" href="#" data-toggle="tooltip" data-trigger="hover"  data-target="' . substr(key($this->action['edit']['route']), 1) . '" data-placement="top" data-id="' . $data[$this->action['edit']['route'][key($this->action['edit']['route'])]] . '" data-html="true" title="Edit"><i class="fa-solid fa-pen-to-square"></i></a>';
+            } else {
+                $action .= '<a class="mr-4 text-dark" href="' . route(key($this->action['edit']['route']), $edit) . '"><i class="fa-solid fa-pen-to-square" data-toggle="tooltip" data-trigger="hover"  data-placement="top" data-html="true" title="Edit"></i></a>';
+            }
+        }
+
+        if ($this->action['delete']['enabled'] == true) {
+
+            $delete = [];
+
+            foreach (explode("|", $this->action['delete']['route'][key($this->action['delete']['route'])]) as  $value) {
+                $delete[$value] = $data[$value];
+            }
+
+
+
+            $action .= '<a class="mr-4 text-dark" href="' . route(key($this->action['delete']['route']), $delete) . '"><i class="fa-solid fa-trash-can" data-toggle="tooltip" data-trigger="hover"  data-placement="top" data-html="true" title="Delete"></i></a>';
+        }
+
 
         if ($this->enableLogging()) {
             $action .=  sprintf(
-                '<span data-bs-toggle="tooltip" data-trigger="hover"  data-bs-placement="left" data-bs-html="true" title="%s" data-original-title="Info"><i class="fa-solid fa-circle-info"></i></span>',
+                '<span data-toggle="popover" data-trigger="hover"  data-placement="left" data-html="true" data-content="%s" data-original-title="Info"><i class="fa-solid fa-circle-info p-2" ></i></span>',
                 $this->mapContent($data)
             );
         }
@@ -618,18 +800,18 @@ trait DataTableTraits
         return $action;
     }
 
-    private function mapContent($data)
+    protected function mapContent($data)
     {
-        if($this->logContent() == ''){
+        if ($this->logContent() == '') {
             return 'No logs for this information.';
         }
 
         $text = '';
 
         foreach ($this->logContent() as $key => $content) {
-            $text .=  vsprintf($content['text'], array_map((function($index) use($data){
+            $text .=  vsprintf($content['text'], array_map((function ($index) use ($data) {
                 return $data[$index];
-           }), $content['map']));;
+            }), $content['map']));;
         }
 
         return $text;
@@ -643,7 +825,13 @@ trait DataTableTraits
      */
     private function renderDataTable(): array
     {
-        $data = $this->queryDataTable()->get()->toArray();
+        $data = $this->queryDataTable()->get();
+
+        if (method_exists($this, 'beforeRender')) {
+            $this->beforeRender($data);
+        }
+
+        $data = $data->toArray();
 
         return $this->mapRows($data);
     }
@@ -657,7 +845,6 @@ trait DataTableTraits
      */
     private function getDataCount(): int
     {
-
-        return (int)($this->query_count->get()->toArray()[0]->count);
+        return (int)($this->query_count->first() == null ? 0 : $this->query_count->first()->count);
     }
 }
