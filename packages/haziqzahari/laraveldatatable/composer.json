@@ -1,0 +1,18 @@
+{
+    "name": "haziqzahari/laraveldatatable",
+    "description": "This package acts as the service to handle server - side scripting for your DataTable.",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Haziqzahari\\Laraveldatatable\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "haziqzahari",
+            "email": "haziqzahari@outlook.com"
+        }
+    ],
+    "require": {}
+}

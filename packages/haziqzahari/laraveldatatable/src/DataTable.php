@@ -2,6 +2,13 @@
 
 namespace App\DataTable;
 
+use Haziqzahari\Laraveldatatable\Helpers\UseActions;
+use Haziqzahari\Laraveldatatable\Helpers\UseFormatting;
+use Haziqzahari\Laraveldatatable\Helpers\UseIndexing;
+use Haziqzahari\Laraveldatatable\Helpers\UseLogging;
+use Haziqzahari\Laraveldatatable\Helpers\UseModel;
+use Haziqzahari\Laraveldatatable\Helpers\UseQuery;
+use Haziqzahari\Laraveldatatable\Helpers\UseStyles;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -10,11 +17,11 @@ use Illuminate\Support\Facades\Schema;
  */
 trait DataTableTraits
 {
+    use UseActions, UseFormatting, UseIndexing, UseLogging, UseModel, UseQuery, UseStyles;
+
     private $search;
     private $limit;
     private $offset;
-    private $query;
-    private $query_count;
     private $column;
     private $direction;
     private $draw;
@@ -49,17 +56,6 @@ trait DataTableTraits
 
         return $response;
     }
-
-    /**
-     * Return SQL Query of Query Builder
-     *
-     * @return array
-     */
-    public function getDataTableSQL(): string
-    {
-        return $response = $this->queryDataTable()->toSql();
-    }
-
 
     /**
      * Set the search values for building query
@@ -138,60 +134,6 @@ trait DataTableTraits
         $this->action['view']['route'] = $view_route;
         $this->action['edit']['route'] = $edit_route;
         $this->action['delete']['route'] = $delete_route;
-    }
-
-    /**
-     * Query builder for DataTable
-     *
-     * @return object
-     */
-    public function queryDataTable()
-    {
-        $this->query = DB::table($this->queryTable())
-            ->select($this->mapQueryColumns());
-
-        $this->query_count = DB::table($this->queryTable())
-            ->selectRaw('COUNT(' . $this->queryTable() . '.' . ((array)($this->getTableColumns()[0]))["Field"] . ') OVER () as count');
-
-        if (!empty($this->queryJoins())) {
-            array_map(array($this, 'mapJoins'), $this->queryJoins());
-        }
-
-        if (!empty($this->queryConditions())) {
-            array_map(array($this, 'mapConditions'), $this->queryConditions());
-        }
-
-        if (!empty($this->search)) {
-            $this->query->where(function ($q) {
-                return $this->mapSearchValue($q, empty($this->searchColumns()) ? $this->getTableColumns() : $this->searchColumns());
-            });
-            $this->query_count->where(function ($q) {
-                return $this->mapSearchValue($q, empty($this->searchColumns()) ? $this->getTableColumns() : $this->searchColumns());
-            });
-        }
-
-        if (!empty($this->queryGroup())) {
-            $this->query->groupBy($this->queryGroup());
-
-            $this->query_count->groupBy($this->queryGroup());
-        }
-
-        if(!empty($this->queryOrder()))
-        {
-            $this->mapQueryOrders();
-        }
-
-        if (!empty($this->order)) {
-            $this->mapOrders();
-        }
-
-        if ($this->offset != 0) {
-            $this->query->offset($this->offset);
-        }
-
-        $this->query->limit($this->limit);
-
-        return $this->query;
     }
 
     /**
@@ -378,17 +320,7 @@ trait DataTableTraits
 
 
 
-    /**
-     * Get the columns of the table specified.
-     * (Only for MySQL)
-     *
-     *
-     * @return array
-     */
-    private function getTableColumns(): array
-    {
-        return DB::select('SHOW COLUMNS FROM ' . $this->queryTable());
-    }
+   
 
     /**
      * Map the columns of the table specified.
@@ -402,116 +334,6 @@ trait DataTableTraits
         return array_map(function ($column, $key) {
             return $column;
         }, $this->queryColumns(), array_keys($this->queryColumns()));
-    }
-
-    /**
-     * Map joins for query builder.
-     *
-     *
-     * @return void
-     */
-    private function mapJoins($join)
-    {
-        switch ($join['type']) {
-            case 'right':
-                $this->query->rightJoin(
-                    $join['table'],
-                    function ($j) use ($join) {
-                        $j->on(
-                            $join['first_key'],
-                            $join['operator'],
-                            $join['second_key']
-                        );
-
-                        if (array_key_exists('condition', $join)) {
-                            $j->whereRaw($join['condition']);
-                        }
-                    }
-                );
-                $this->query_count->rightJoin(
-                    $join['table'],
-                    function ($j) use ($join) {
-                        $j->on(
-                            $join['first_key'],
-                            $join['operator'],
-                            $join['second_key']
-                        );
-
-                        if (array_key_exists('condition', $join)) {
-                            $j->whereRaw($join['condition']);
-                        }
-                    }
-                );
-                break;
-            case 'left':
-                $this->query->leftJoin(
-                    $join['table'],
-                    function ($j) use ($join) {
-                        $j->on(
-                            $join['first_key'],
-                            $join['operator'],
-                            $join['second_key']
-                        );
-
-                        if (array_key_exists('condition', $join)) {
-                            $j->whereRaw($join['condition']);
-                        }
-                    }
-                );
-                $this->query_count->leftJoin(
-                    $join['table'],
-                    function ($j) use ($join) {
-                        $j->on(
-                            $join['first_key'],
-                            $join['operator'],
-                            $join['second_key']
-                        );
-
-                        if (array_key_exists('condition', $join)) {
-                            $j->whereRaw($join['condition']);
-                        }
-                    }
-                );
-                break;
-            case 'joinSub':
-                $this->query->joinSub(
-                    $join['subquery']
-                );
-                $this->query_count->joinSub(
-                    $join['subquery']
-                );
-                break;
-            default:
-                $this->query->join(
-                    $join['table'],
-                    function ($j) use ($join) {
-                        $j->on(
-                            $join['first_key'],
-                            $join['operator'],
-                            $join['second_key']
-                        );
-
-                        if (array_key_exists('condition', $join)) {
-                            $j->whereRaw($join['condition']);
-                        }
-                    }
-                );
-                $this->query_count->join(
-                    $join['table'],
-                    function ($j) use ($join) {
-                        $j->on(
-                            $join['first_key'],
-                            $join['operator'],
-                            $join['second_key']
-                        );
-
-                        if (array_key_exists('condition', $join)) {
-                            $j->whereRaw($join['condition']);
-                        }
-                    }
-                );
-                break;
-        }
     }
 
     /**
@@ -632,8 +454,8 @@ trait DataTableTraits
      */
     private function mapQueryOrders()
     {
-        array_map(function($order){
-            $this->query->orderBy($order['column'],$order['direction']);
+        array_map(function ($order) {
+            $this->query->orderBy($order['column'], $order['direction']);
         }, $this->queryOrder());
     }
 

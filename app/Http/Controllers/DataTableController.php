@@ -105,7 +105,7 @@ class DataTableController extends Controller
         ]);
         $customer->setDraw($params['draw']);
 
-        $customer->setActionButton(true, true, true);
+        $customer->setActionButton(false, false, false);
         $customer->setActionRoute(
             'datatable.show',
             'datatable.edit',
