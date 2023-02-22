@@ -15,9 +15,15 @@ use Illuminate\Support\Facades\Schema;
 /**
  *
  */
-trait DataTableTraits
+class DataTable
 {
-    use UseActions, UseFormatting, UseIndexing, UseLogging, UseModel, UseQuery, UseStyles;
+    use UseActions,
+    UseFormatting,
+    UseIndexing,
+    UseLogging,
+    UseModel,
+    UseQuery,
+    UseStyles;
 
     private $search;
     private $limit;
@@ -136,113 +142,6 @@ trait DataTableTraits
         $this->action['delete']['route'] = $delete_route;
     }
 
-    /**
-     * Set the DB table used for query builder.
-     *
-     * @return string
-     */
-    public function enableIndexing(): bool
-    {
-        return true;
-    }
-
-    /**
-     * Set the DB table used for query builder.
-     *
-     * @return string
-     */
-    public function enableLogging(): bool
-    {
-        return true;
-    }
-
-    /**
-     * Set the DB table used for query builder.
-     *
-     * @return string
-     */
-    public function queryTable(): string
-    {
-        return '';
-    }
-
-    /**
-     * Set the columns used for query builder in select().
-     *
-     * If there are joins involved, the tables for each columns
-     * are to be specifed. If none, then column names only is sufficient.
-     *
-     * e.g. [
-     * 'customers.customer_name',
-     * 'customer_statuses.status_description'
-     * ]
-     *
-     * @return array
-     */
-    public function queryColumns(): array
-    {
-        return ['*'];
-    }
-
-    /**
-     * Set the joins used for query builder in join().
-     *
-     * Format : [
-     *   'table' => '',
-     *   'first_key' => '',
-     *   'operator' => '',
-     *   'second_key' => ''
-     * ]
-     *
-     * @return array
-     */
-    public function queryJoins(): array
-    {
-        return [];
-    }
-
-    /**
-     * Set the conditions used for query builder in join().
-     *
-     * Format : [
-     *   'column' => '',
-     *   'operator' => '',
-     *   'value' => '',
-     *   'type' => ''
-     * ]
-     *
-     * @return array
-     */
-    public function queryConditions(): array
-    {
-        return [];
-    }
-
-    /**
-     * Set the orders for query builder in orderBy().
-     *
-     * Format : [
-     *   'column' => '',
-     *   'direction' => '',
-     * ]
-     * @return array
-     */
-    public function queryOrder(): array
-    {
-        return [];
-    }
-
-    /**
-     * Set the group by for query builder in groupBy().
-     *
-     * Format : [$group, ...]
-     *
-     * @return array
-     */
-    public function queryGroup(): array
-    {
-        return [];
-    }
 
     /**
      * Set the mapping for data returned.
@@ -320,7 +219,7 @@ trait DataTableTraits
 
 
 
-   
+
 
     /**
      * Map the columns of the table specified.

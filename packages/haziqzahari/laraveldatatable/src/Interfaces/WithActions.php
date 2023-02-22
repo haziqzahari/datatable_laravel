@@ -9,4 +9,9 @@ interface WithActions{
      *
      */
     public function defaultActions();
+
+    /**
+     * @return array
+     */
+    
 }

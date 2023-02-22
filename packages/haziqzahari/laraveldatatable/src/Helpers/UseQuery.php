@@ -32,7 +32,7 @@ trait UseQuery
      */
     public function queryColumns(): array
     {
-        return [];
+        return ['*'];
     }
 
     /**
